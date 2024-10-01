@@ -1,0 +1,72 @@
+﻿<Window x:Class="PhigrosSaveDumper.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PhigrosSaveDumper"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="768" Width="1366">
+    <Grid ShowGridLines="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="15"/>
+            <RowDefinition/>
+            <RowDefinition Height="15"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="15"/>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
+            <ColumnDefinition Width="15"/>
+        </Grid.ColumnDefinitions>
+        <TextBox x:Name="LogOutput" Grid.Column="2" Grid.Row="1" TextWrapping="Wrap" Text="Log will be shown here..." IsReadOnly="True" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"/>
+        <Grid Grid.Column="1" Grid.Row="1" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Auto" Margin="15,15,15,15">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48"/>
+                <RowDefinition Height="216"/>
+                <RowDefinition Height="128"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="TokenTextBox" TextWrapping="Wrap" Text="Put token here..." FontSize="16" VerticalAlignment="Top"/>
+                <Button x:Name="TapTapLoginButton" Grid.Column="1" Content="Login through TapTap" HorizontalAlignment="Left" Margin="15,2,0,0" VerticalAlignment="Top" Click="LoginTapTap"/>
+                <Button x:Name="LockButton" Grid.Column="1" Content="Lock/Unlock token" HorizontalAlignment="Left" Margin="15,27,0,0" VerticalAlignment="Top" Click="LockOrUnlock"/>
+            </Grid>
+            <GroupBox x:Name="OperationGroupBox" Header="Operations" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Button x:Name="ListTimeIndex" Content="List time index" HorizontalAlignment="Left" Margin="10,35,0,0" VerticalAlignment="Top" Click="ListTimeIndex_Click"/>
+                    <Button x:Name="DownloadUnpackButton" Content="Download and unpack" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Click="DownloadUnpackButton_Click"/>
+                    <Button x:Name="DoSomethingButton" Content="Do something" HorizontalAlignment="Left" Margin="10,110,0,0" VerticalAlignment="Top" Click="DoSomethingButton_Click"/>
+                    <Button x:Name="EmulateReadRecordButton" Grid.Column="1" Content="Emulate read record (needs debugger)" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top" Click="EmulateReadRecordButton_Click"/>
+                    <Button x:Name="EmulateReadUserInfoButton" Grid.Column="1" Content="Emulate read user info (needs debugger)" HorizontalAlignment="Left" Margin="10,35,0,0" VerticalAlignment="Top" Click="EmulateReadUserInfoButton_Click"/>
+                    <Button x:Name="EmulateReadGameUserInfoButton" Grid.Column="1" Content="Emulate read game user info (needs debugger)" HorizontalAlignment="Left" Margin="10,60,0,0" VerticalAlignment="Top" Click="EmulateReadGameUserInfoButton_Click"/>
+                    <Button x:Name="EmulateReadProgressButton" Grid.Column="1" Content="Emulate read progress (needs debugger)" HorizontalAlignment="Left" Margin="10,85,0,0" VerticalAlignment="Top" Click="EmulateReadProgressButton_Click"/>
+                    <Button x:Name="EmulateReadSettingsButton" Grid.Column="1" Content="Emulate read settings (needs debugger)" HorizontalAlignment="Left" Margin="10,110,0,0" VerticalAlignment="Top" Click="EmulateReadSettingsButton_Click"/>
+                    <Button x:Name="EmulateGetRawInfoButton" Grid.Column="1" Content="Emulate read raw info" HorizontalAlignment="Left" Margin="10,145,0,0" VerticalAlignment="Top" Click="EmulateGetRawInfoButton_Click"/>
+                </Grid>
+
+            </GroupBox>
+            <GroupBox x:Name="SettingsGroupBox" Header="Settings" Grid.Row="2">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <xctk:IntegerUpDown x:Name="TimeIndexSelector" Width="64" Height="24" Margin="83,12,479,69" Value="0"></xctk:IntegerUpDown>
+                    <Label Content="Time index" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
+                </Grid>
+            </GroupBox>
+        </Grid>
+
+    </Grid>
+</Window>
