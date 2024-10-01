@@ -7,7 +7,6 @@ using PhigrosLibraryCSharp.GameRecords;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Windows;
 using yt6983138.Common;
 
@@ -265,45 +264,8 @@ public partial class MainWindow : Window
 			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
 		}
 	}
-	private async void DoSomethingButton_Click(object sender, RoutedEventArgs e)
+	private void DoSomethingButton_Click(object sender, RoutedEventArgs e)
 	{
-		Save saveHelper = this.SaveHelper!;
-		HttpClient httpClient = new();
-		//(HttpClient)typeof(Save).GetProperty("Client",
-		//BindingFlags.NonPublic | BindingFlags.Instance)!
-		//.GetValue(saveHelper)!;
-
-
-		//HttpResponseMessage pRes = await httpClient.PostAsync("https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/fileTokens",
-		//	new StringContent("""
-		//		{
-		//		  "name": ".save",
-		//		  "__type": "File",
-		//		  "ACL": {
-		//		    "65ed247be053a67229bd73ba": {
-		//		      "read": true,
-		//		      "write": true
-		//		    }
-		//		  },
-		//		  "prefix": "gamesaves",
-		//		  "metaData": {
-		//		    "size": 13056,
-		//		    "_checksum": "a43379f945e6036ace1cc5715ff08a6a",
-		//		    "prefix": "gamesaves"
-		//		  }
-		//		}
-		//		""", MediaTypeHeaderValue.Parse("application/json")));
-		//HttpResponseMessage pRes = await httpClient.DeleteAsync("https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/files/65ed24b4e053a67229bd752a");
-		httpClient.DefaultRequestHeaders.Add("Authorization", "UpToken bOJAZVDET_Z11xes0ufp39ao_Tie7mrGqecKRkUf:SFTjLCK774trDdGvnua0BWniF2s=:eyJzY29wZSI6InJBSzNGZmRpOmdhbWVzYXZlcy9DaGNxZDlKRXZuUTVzS0lmRnB6YlFhZjlMcHU4WXcxQy8uc2F2ZSIsImRlYWRsaW5lIjoxNzI2OTMxMzAzLCJpbnNlcnRPbmx5IjoxfQ==");
-		HttpResponseMessage pRes = await httpClient.PostAsync("https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/fileCallback",
-			new StringContent(
-				"""
-					{
-						"result": true,
-						"token": "bOJAZVDET_Z11xes0ufp39ao_Tie7mrGqecKRkUf:SFTjLCK774trDdGvnua0BWniF2s=:eyJzY29wZSI6InJBSzNGZmRpOmdhbWVzYXZlcy9DaGNxZDlKRXZuUTVzS0lmRnB6YlFhZjlMcHU4WXcxQy8uc2F2ZSIsImRlYWRsaW5lIjoxNzI2OTMxMzAzLCJpbnNlcnRPbmx5IjoxfQ=="
-					}
-				""", MediaTypeHeaderValue.Parse("application/json")));
-		Console.WriteLine(await pRes.Content.ReadAsStringAsync());
-
+		// put ur code here
 	}
 }
