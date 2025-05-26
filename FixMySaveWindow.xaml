@@ -1,0 +1,27 @@
+﻿<Window x:Class="PhigrosSaveDumper.FixMySaveWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PhigrosSaveDumper"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
+        mc:Ignorable="d"
+        Title="FixMySaveWindow" Height="160" Width="256" ScrollViewer.VerticalScrollBarVisibility="Disabled" ResizeMode="CanMinimize">
+    <Grid Margin="0,0,0,0">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Label Content="Source save index to be restored" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0" VerticalContentAlignment="Center" />
+        <xctk:IntegerUpDown Value="0" x:Name="SourceIndex" Grid.Row="0" Grid.Column="0" Width="48" Height="25" Margin="174,6,10,5" HorizontalAlignment="Right" VerticalAlignment="Center" ScrollViewer.VerticalScrollBarVisibility="Disabled"/>
+        <Label Content="Target save index to be fixed" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center" VerticalContentAlignment="Center" />
+        <xctk:IntegerUpDown Value="0" x:Name="TargetIndex" Grid.Row="1" Width="48" Height="25" Margin="174,6,10,5" HorizontalAlignment="Right" VerticalAlignment="Center" ScrollViewer.VerticalScrollBarVisibility="Disabled"/>
+        <Button Content="Fix Now" Click="FixNowButton_Click" HorizontalAlignment="Left" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Center"/>
+        <Button Content="Cancel" Click="CancelButton_Click" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="2" VerticalAlignment="Center"/>
+        <Button Content="Show Indexes" Click="ShowIndexesButton_Click"  HorizontalAlignment="Center" Grid.Row="2" VerticalAlignment="Center"/>
+    </Grid>
+</Window>

@@ -54,6 +54,7 @@
                     <Button x:Name="EmulateReadProgressButton" Grid.Column="1" Content="Emulate read progress (needs debugger)" HorizontalAlignment="Left" Margin="10,85,0,0" VerticalAlignment="Top" Click="EmulateReadProgressButton_Click"/>
                     <Button x:Name="EmulateReadSettingsButton" Grid.Column="1" Content="Emulate read settings (needs debugger)" HorizontalAlignment="Left" Margin="10,110,0,0" VerticalAlignment="Top" Click="EmulateReadSettingsButton_Click"/>
                     <Button x:Name="EmulateGetRawInfoButton" Grid.Column="1" Content="Emulate read raw info" HorizontalAlignment="Left" Margin="10,145,0,0" VerticalAlignment="Top" Click="EmulateGetRawInfoButton_Click"/>
+                    <Button x:Name="FixWizardButton" Content="Open fix wizard" HorizontalAlignment="Left" Margin="10,145,0,0" VerticalAlignment="Top" Click="FixWizardButton_Click"/>
                 </Grid>
 
             </GroupBox>
@@ -62,7 +63,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition/>
                     </Grid.RowDefinitions>
-                    <xctk:IntegerUpDown x:Name="TimeIndexSelector" Width="64" Height="24" Margin="83,12,479,69" Value="0"></xctk:IntegerUpDown>
+                    <xctk:IntegerUpDown x:Name="TimeIndexSelector" Width="48" Height="24" Margin="83,12,479,69" Value="0"></xctk:IntegerUpDown>
                     <Label Content="Time index" HorizontalAlignment="Left" Margin="10,10,0,0" VerticalAlignment="Top"/>
                 </Grid>
             </GroupBox>

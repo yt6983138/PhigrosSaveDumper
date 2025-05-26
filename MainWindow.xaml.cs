@@ -18,9 +18,9 @@ public partial class MainWindow : Window
 {
 	private Save? _saveHelper;
 
-	internal readonly static EventId TapTapEventId = new(0, "TapTap");
-	internal readonly static EventId MiscEventId = new(0, "Misc");
-	internal readonly static EventId OperationEventId = new(0, "Operations");
+	internal static readonly EventId TapTapEventId = new(0, "TapTap");
+	internal static readonly EventId MiscEventId = new(0, "Misc");
+	internal static readonly EventId OperationEventId = new(0, "Operations");
 
 	internal Logger Logger { get; set; } = new("./latest.log");
 	public Save? SaveHelper
@@ -45,7 +45,8 @@ public partial class MainWindow : Window
 		if (!Directory.Exists("./Saves/"))
 			Directory.CreateDirectory("./Saves/");
 	}
-	public async void LoginTapTap(object _, RoutedEventArgs _2)
+
+	private async void LoginTapTap(object _, RoutedEventArgs _2)
 	{
 		this.Logger.Log(LogLevel.Information, "TapTap login started...", TapTapEventId, this);
 		try
@@ -62,7 +63,7 @@ public partial class MainWindow : Window
 			this.Logger.Log(LogLevel.Information, TapTapEventId, this, ex);
 		}
 	}
-	public async void ListenLogin(CompleteQRCodeData data)
+	private async void ListenLogin(CompleteQRCodeData data)
 	{
 		DateTime expiresAt = DateTime.Now + new TimeSpan(0, 0, data.ExpiresInSeconds);
 		while (DateTime.Now < expiresAt)
@@ -80,7 +81,7 @@ public partial class MainWindow : Window
 			}
 		}
 	}
-	public async void LockOrUnlock(object sender, RoutedEventArgs e)
+	private async void LockOrUnlock(object sender, RoutedEventArgs e)
 	{
 		if (!this.TokenTextBox.IsEnabled)
 		{
@@ -108,7 +109,7 @@ public partial class MainWindow : Window
 		return;
 	}
 
-	public async void DownloadUnpackButton_Click(object sender, RoutedEventArgs e)
+	private async void DownloadUnpackButton_Click(object sender, RoutedEventArgs e)
 	{
 		DirectoryInfo nativeDir = new("./Saves/Native");
 		if (nativeDir.Exists)
@@ -138,7 +139,7 @@ public partial class MainWindow : Window
 		}
 	}
 
-	public async void ListTimeIndex_Click(object sender, RoutedEventArgs e)
+	private async void ListTimeIndex_Click(object sender, RoutedEventArgs e)
 	{
 		int i = 0;
 		string message = string.Join("\n",
@@ -158,11 +159,11 @@ public partial class MainWindow : Window
 			if (!File.Exists("difficulty.tsv"))
 			{
 				using HttpClient client = new();
-				byte[] data = await client.GetByteArrayAsync(@"https://yt6983138.github.io/Assets/RksReader/Latest/difficulty.csv");
-				File.WriteAllBytes("difficulty.csv", data);
+				byte[] data = await client.GetByteArrayAsync(@"https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/info/difficulty.tsv");
+				File.WriteAllBytes("difficulty.tsv", data);
 			}
-			string[] lines = File.ReadAllLines("difficulty.csv");
-			Dictionary<string, float[]> difficulties = new();
+			string[] lines = File.ReadAllLines("difficulty.tsv");
+			Dictionary<string, float[]> difficulties = [];
 			foreach (string line in lines)
 			{
 				string[] splitted = line.Replace("\n", "").Replace("\r", "").Split('\t');
@@ -267,5 +268,9 @@ public partial class MainWindow : Window
 	private void DoSomethingButton_Click(object sender, RoutedEventArgs e)
 	{
 		// put ur code here
+	}
+	private void FixWizardButton_Click(object sender, RoutedEventArgs e)
+	{
+		new FixMySaveWindow(this).Show();
 	}
 }
