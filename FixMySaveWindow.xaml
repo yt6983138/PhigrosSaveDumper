@@ -16,9 +16,9 @@
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
         </Grid.ColumnDefinitions>
-        <Label Content="Source save index to be restored" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0" VerticalContentAlignment="Center" />
+        <Label Content="Restore from index" HorizontalAlignment="Left" VerticalAlignment="Center" Grid.Column="0" VerticalContentAlignment="Center" />
         <xctk:IntegerUpDown Value="0" x:Name="SourceIndex" Grid.Row="0" Grid.Column="0" Width="48" Height="25" Margin="174,6,10,5" HorizontalAlignment="Right" VerticalAlignment="Center" ScrollViewer.VerticalScrollBarVisibility="Disabled"/>
-        <Label Content="Target save index to be fixed" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center" VerticalContentAlignment="Center" />
+        <Label Content="Fix save at index" Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Center" VerticalContentAlignment="Center" />
         <xctk:IntegerUpDown Value="0" x:Name="TargetIndex" Grid.Row="1" Width="48" Height="25" Margin="174,6,10,5" HorizontalAlignment="Right" VerticalAlignment="Center" ScrollViewer.VerticalScrollBarVisibility="Disabled"/>
         <Button Content="Fix Now" Click="FixNowButton_Click" HorizontalAlignment="Left" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Center"/>
         <Button Content="Cancel" Click="CancelButton_Click" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="2" VerticalAlignment="Center"/>

@@ -75,6 +75,7 @@ public partial class FixMySaveWindow : Window
 		{
 			Save save = this._mainWindow.SaveHelper!;
 			JObject rawSave = await SaveUploader.FetchRawSaveAsNode(save);
+			this._mainWindow.Logger.Log(LogLevel.Information, $"Raw save: {rawSave.ToJson()}", MainWindow.OperationEventId, this);
 			JToken results = rawSave["results"]!;
 
 			string message = string.Join("\n",
