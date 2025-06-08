@@ -45,7 +45,7 @@ public partial class FixMySaveWindow : Window
 			JObject rawSave = await SaveUploader.FetchRawSaveAsNode(save);
 			this._mainWindow.Logger.Log(LogLevel.Information, $"Raw save: {rawSave.ToJson()}", MainWindow.OperationEventId, this);
 			JToken results = rawSave["results"]!;
-			JToken toFixValue = results[targetIndex]!;
+			JToken? toFixValue = this.TargetIndex.IsEnabled ? results[targetIndex]! : null;
 
 			JToken sourceValue = results[sourceIndex]!;
 
@@ -54,9 +54,9 @@ public partial class FixMySaveWindow : Window
 			this._mainWindow.Logger.Log(LogLevel.Information, $"Uploading...", MainWindow.OperationEventId, this);
 			await SaveUploader.UploadSave(
 				save,
-				(string)toFixValue["user"]!["objectId"]!,
+				(string)sourceValue["user"]!["objectId"]!,
 				null,
-				(string)toFixValue["objectId"]!,
+				(string?)toFixValue?["objectId"],
 				raw,
 				Convert.FromBase64String((string)sourceValue["summary"]!));
 			this._mainWindow.Logger.Log(LogLevel.Information, $"Upload complete.", MainWindow.OperationEventId, this);
@@ -87,5 +87,9 @@ public partial class FixMySaveWindow : Window
 			this._mainWindow.Logger.Log(LogLevel.Error, $"Error while fixing save: {ex.Message}", MainWindow.OperationEventId, this, ex);
 			MessageBox.Show($"An error occurred while fixing the save: {ex.Message}", "Fix Wizard Error", MessageBoxButton.OK, MessageBoxImage.Error);
 		}
+	}
+	private void CheckBox_Clicked(object sender, RoutedEventArgs e)
+	{
+		this.TargetIndex.IsEnabled = !this.TargetIndex.IsEnabled;
 	}
 }

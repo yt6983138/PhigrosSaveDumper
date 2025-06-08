@@ -7,6 +7,7 @@ using PhigrosLibraryCSharp.GameRecords;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Text.Json.Nodes;
 using System.Windows;
 using yt6983138.Common;
 
@@ -37,7 +38,11 @@ public partial class MainWindow : Window
 	public MainWindow()
 	{
 		this.InitializeComponent();
-		this.Logger.OnAfterLog += (_, _2) => this.LogOutput.Text = string.Join("", Logger.AllLogs);
+		this.Logger.OnAfterLog += (_, _2) =>
+		{
+			this.LogOutput.Text = string.Join("", Logger.AllLogs);
+			this.LogOutput.ScrollToEnd();
+		};
 		OnLockOrUnlock += (_, obj) => this.OperationGroupBox.IsEnabled = obj is not null;
 		OnLockOrUnlock += (_, obj) => this.SettingsGroupBox.IsEnabled = obj is not null;
 		this.SaveHelper = null;
@@ -46,10 +51,37 @@ public partial class MainWindow : Window
 			Directory.CreateDirectory("./Saves/");
 	}
 
+	private async Task<bool> ExecuteHandled(Func<Task> action, string errorMessage)
+	{
+		try
+		{
+			await action.Invoke();
+			return true;
+		}
+		catch (Exception ex)
+		{
+			this.Logger.Log(LogLevel.Information, errorMessage, OperationEventId, this, ex);
+			return false;
+		}
+	}
+	private bool ExecuteHandled(Action action, string errorMessage)
+	{
+		try
+		{
+			action.Invoke();
+			return true;
+		}
+		catch (Exception ex)
+		{
+			this.Logger.Log(LogLevel.Information, errorMessage, OperationEventId, this, ex);
+			return false;
+		}
+	}
+
 	private async void LoginTapTap(object _, RoutedEventArgs _2)
 	{
 		this.Logger.Log(LogLevel.Information, "TapTap login started...", TapTapEventId, this);
-		try
+		await this.ExecuteHandled(async () =>
 		{
 			this.Logger.Log(LogLevel.Information, "Requesting login link...", TapTapEventId, this);
 			CompleteQRCodeData qrCode = await TapTapHelper.RequestLoginQrCode();
@@ -57,28 +89,35 @@ public partial class MainWindow : Window
 			this.Logger.Log(LogLevel.Information, $"QRCode url generated: {qrCode.Url}, " +
 				$"expires in {qrCode.ExpiresInSeconds} seconds.", TapTapEventId, this);
 			this.ListenLogin(qrCode);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, TapTapEventId, this, ex);
-		}
+		}, "Error generating qrcode:");
 	}
 	private async void ListenLogin(CompleteQRCodeData data)
 	{
 		DateTime expiresAt = DateTime.Now + new TimeSpan(0, 0, data.ExpiresInSeconds);
 		while (DateTime.Now < expiresAt)
 		{
-			await Task.Delay(2500);
-			TapTapTokenData? result = await TapTapHelper.CheckQRCodeResult(data);
-			if (result is not null)
+			await this.ExecuteHandled(async () =>
 			{
-				TapTapProfileData profile = await TapTapHelper.GetProfile(result.Data);
-				LCCombinedAuthData completed = new(profile.Data, result.Data);
-				string token = await LCHelper.LoginAndGetToken(completed);
-				this.TokenTextBox.Text = token;
-				this.Logger.Log(LogLevel.Information, $"Got token: {token}", TapTapEventId, this);
-				return;
-			}
+				await Task.Delay(2500);
+				TapTapTokenData? result = await TapTapHelper.CheckQRCodeResult(data);
+				if (result is not null)
+				{
+					TapTapProfileData profile = await TapTapHelper.GetProfile(result.Data);
+
+					this.Logger.Log(LogLevel.Information, $"Login result: {System.Text.Json.JsonSerializer.Serialize(result)}", TapTapEventId, this);
+					this.Logger.Log(LogLevel.Information, $"Profile result: {System.Text.Json.JsonSerializer.Serialize(profile)}", TapTapEventId, this);
+
+					LCCombinedAuthData completed = new(profile.Data, result.Data);
+					JsonNode invoked = await LCHelper.LoginWithAuthData(completed);
+
+					this.Logger.Log(LogLevel.Information, $"Final result: {invoked.ToJsonString()}", TapTapEventId, this);
+
+					string token = ((string?)invoked["sessionToken"]).EnsureNotNull();
+					this.TokenTextBox.Text = token;
+					this.Logger.Log(LogLevel.Information, $"Got token: {token}", TapTapEventId, this);
+					return;
+				}
+			}, "Error processing login:");
 		}
 	}
 	private async void LockOrUnlock(object sender, RoutedEventArgs e)
@@ -87,7 +126,7 @@ public partial class MainWindow : Window
 		{
 			goto Final;
 		}
-		try
+		if (!await this.ExecuteHandled(async () =>
 		{
 			this.Logger.Log(LogLevel.Information, "Locking token...", MiscEventId, this);
 			Save helper = new(this.TokenTextBox.Text.Trim());
@@ -95,12 +134,11 @@ public partial class MainWindow : Window
 			this.SaveHelper = helper;
 			this.TokenTextBox.IsEnabled = false;
 			this.Logger.Log(LogLevel.Information, "Token locked.", MiscEventId, this);
-		}
-		catch (Exception ex)
+		}, $"Error while locking:"))
 		{
-			this.Logger.Log(LogLevel.Information, $"Error while locking:", MiscEventId, this, ex);
 			goto Final;
 		}
+
 		return;
 	Final:
 		this.SaveHelper = null;
@@ -116,44 +154,42 @@ public partial class MainWindow : Window
 		{
 			string dateTimeString = DateTime.Now.ToString("s");
 			dateTimeString = $"{dateTimeString.Replace(':', '_')},{(DateTime.Now - default(DateTime)).TotalMilliseconds}";
-			try
+
+			if (!this.ExecuteHandled(() =>
 			{
 				nativeDir.MoveTo($"./Saves/{dateTimeString}");
 				nativeDir = new("./Saves/Native");
 				nativeDir.Create();
 				this.Logger.Log(LogLevel.Information, $"Renamed folder from 'Native' to '{dateTimeString}'.", MiscEventId, this);
-			}
-			catch (Exception ex)
+			}, "Error while moving folder:"))
 			{
-				this.Logger.Log(LogLevel.Information, $"Error while moving folder:", OperationEventId, this, ex);
 				return;
 			}
 		}
-		try
+		await this.ExecuteHandled(async () =>
 		{
 			await this.SaveHelper!.UnpackRawZip(this.TimeIndexSelector.Value ?? 0, nativeDir, this.Logger, OperationEventId);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while unpacking:", OperationEventId, this, ex);
-		}
+		}, "Error while unpacking:");
 	}
 
 	private async void ListTimeIndex_Click(object sender, RoutedEventArgs e)
 	{
-		int i = 0;
-		string message = string.Join("\n",
-				(await this.SaveHelper!.GetRawSaveFromCloudAsync())
-				.GetParsedSaves()
-				.Select(x => $"{i++}: {x.ModificationTime}")
-			);
-		MessageBox.Show(message);
-		this.Logger.Log(LogLevel.Information, $"Listing indexes...\n{message}", OperationEventId, this);
+		await this.ExecuteHandled(async () =>
+		{
+			int i = 0;
+			string message = string.Join("\n",
+					(await this.SaveHelper!.GetRawSaveFromCloudAsync())
+					.GetParsedSaves()
+					.Select(x => $"{i++}: {x.ModificationTime}")
+				);
+			MessageBox.Show(message);
+			this.Logger.Log(LogLevel.Information, $"Listing indexes...\n{message}", OperationEventId, this);
+		}, "Error while listing index:");
 	}
 
 	private async void EmulateReadRecordButton_Click(object sender, RoutedEventArgs e)
 	{
-		try
+		await this.ExecuteHandled(async () =>
 		{
 			ByteReader byteReader = new(File.ReadAllBytes("./Saves/Native/Decrypted/gameRecord"));
 			if (!File.Exists("difficulty.tsv"))
@@ -181,31 +217,23 @@ public partial class MainWindow : Window
 				CompleteScore score = scores[i];
 				this.Logger.Log(LogLevel.Information, OperationEventId, "{0}: {1}/{2}/{3}", i, score.Id, score.Score, score.Accuracy);
 			}
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
-		}
+		}, "Error while reading:");
 	}
 
 	private async void EmulateReadUserInfoButton_Click(object sender, RoutedEventArgs e)
 	{
-		try
+		await this.ExecuteHandled(async () =>
 		{
 			this.Logger.Log(LogLevel.Information, "Loading user info", OperationEventId, this);
 			Save saveHelper = this.SaveHelper!;
 
 			this.Logger.Log(LogLevel.Information, (await saveHelper.GetUserInfoAsync()).ToJson(), OperationEventId, this);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
-		}
+		}, "Error while reading:");
 	}
 
 	private void EmulateReadGameUserInfoButton_Click(object sender, RoutedEventArgs e)
 	{
-		try
+		this.ExecuteHandled(() =>
 		{
 			this.Logger.Log(LogLevel.Information, "Loading game user info", OperationEventId, this);
 			Save saveHelper = this.SaveHelper!;
@@ -213,16 +241,12 @@ public partial class MainWindow : Window
 			byte[] rawData = File.ReadAllBytes("./Saves/Native/Decrypted/user"); // note raw data is zip
 			ByteReader reader = new(rawData);
 			this.Logger.Log(LogLevel.Information, reader.ReadGameUserInfo().ToJson(), OperationEventId, this);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
-		}
+		}, "Error while reading:");
 	}
 
 	private void EmulateReadProgressButton_Click(object sender, RoutedEventArgs e)
 	{
-		try
+		this.ExecuteHandled(() =>
 		{
 			this.Logger.Log(LogLevel.Information, "Loading game progress", OperationEventId, this);
 			Save saveHelper = this.SaveHelper!;
@@ -230,16 +254,12 @@ public partial class MainWindow : Window
 			byte[] rawData = File.ReadAllBytes("./Saves/Native/Decrypted/gameProgress"); // note raw data is zip
 			ByteReader reader = new(rawData);
 			this.Logger.Log(LogLevel.Information, reader.ReadGameProgress().ToJson(), OperationEventId, this);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
-		}
+		}, "Error while reading:");
 	}
 
 	private void EmulateReadSettingsButton_Click(object sender, RoutedEventArgs e)
 	{
-		try
+		this.ExecuteHandled(() =>
 		{
 			this.Logger.Log(LogLevel.Information, "Loading game settings", OperationEventId, this);
 			Save saveHelper = this.SaveHelper!;
@@ -247,23 +267,15 @@ public partial class MainWindow : Window
 			byte[] rawData = File.ReadAllBytes("./Saves/Native/Decrypted/settings"); // note raw data is zip
 			ByteReader reader = new(rawData);
 			this.Logger.Log(LogLevel.Information, reader.ReadGameSettings().ToJson(), OperationEventId, this);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
-		}
+		}, "Error while reading:");
 	}
 	private async void EmulateGetRawInfoButton_Click(object sender, RoutedEventArgs e)
 	{
-		try
+		await this.ExecuteHandled(async () =>
 		{
 			PhigrosLibraryCSharp.Cloud.DataStructure.Raw.RawSaveContainer data = await this.SaveHelper!.GetRawSaveFromCloudAsync();
 			this.Logger.Log(LogLevel.Information, data.ToJson(), OperationEventId, this);
-		}
-		catch (Exception ex)
-		{
-			this.Logger.Log(LogLevel.Information, $"Error while reading:", OperationEventId, this, ex);
-		}
+		}, "Error while reading:");
 	}
 	private void DoSomethingButton_Click(object sender, RoutedEventArgs e)
 	{

@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:PhigrosSaveDumper"
         xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         mc:Ignorable="d"
-        Title="FixMySaveWindow" Height="160" Width="256" ScrollViewer.VerticalScrollBarVisibility="Disabled" ResizeMode="CanMinimize">
+        Title="FixMySaveWindow" Height="160" Width="320" ScrollViewer.VerticalScrollBarVisibility="Disabled" ResizeMode="CanMinimize">
     <Grid Margin="0,0,0,0">
         <Grid.RowDefinitions>
             <RowDefinition/>
@@ -23,5 +23,6 @@
         <Button Content="Fix Now" Click="FixNowButton_Click" HorizontalAlignment="Left" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Center"/>
         <Button Content="Cancel" Click="CancelButton_Click" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="2" VerticalAlignment="Center"/>
         <Button Content="Show Indexes" Click="ShowIndexesButton_Click"  HorizontalAlignment="Center" Grid.Row="2" VerticalAlignment="Center"/>
+        <CheckBox Content="Append Instead" HorizontalAlignment="Left" Margin="129,0,0,0" Grid.Row="1" VerticalAlignment="Center" Click="CheckBox_Clicked"/>
     </Grid>
 </Window>

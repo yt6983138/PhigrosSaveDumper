@@ -42,7 +42,7 @@ public static class SaveUploader
 		return JObject.Parse(content);
 	}
 
-	public static async Task UploadSave(Save save, string userObjectId, string? oldSaveGameFileObjectId, string oldSaveObjectId, byte[] packedSaveBuffer, byte[] packedSummaryBuffer)
+	public static async Task UploadSave(Save save, string userObjectId, string? oldSaveGameFileObjectId, string? oldSaveObjectId, byte[] packedSaveBuffer, byte[] packedSummaryBuffer)
 	{
 		FileTokenInfo token = await CreateFileToken(packedSaveBuffer, userObjectId, save);
 		CreateUploadResponse uploadInfo = await CreateUpload(token, save);
@@ -134,7 +134,7 @@ public static class SaveUploader
 		HttpResponseMessage response2 = await client.SendAsync(request2);
 		response2.EnsureSuccessStatusCode();
 	}
-	private static async Task UpdateSummary(FileTokenInfo info, byte[] packedSummaryData, string oldSaveObjectId, string userObjectId, Save save)
+	private static async Task UpdateSummary(FileTokenInfo info, byte[] packedSummaryData, string? oldSaveObjectId, string userObjectId, Save save)
 	{
 		HttpClient client = GetHttpClient(save);
 
@@ -165,7 +165,14 @@ public static class SaveUploader
 			read = true,
 			write = true,
 		};
-		HttpRequestMessage request = new(HttpMethod.Put, $"https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/classes/_GameSave/{oldSaveObjectId}")
+		string url = @"https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/classes/_GameSave";
+		HttpMethod method = HttpMethod.Put;
+		if (!string.IsNullOrEmpty(oldSaveObjectId))
+		{
+			url += $"/{oldSaveObjectId}";
+			method = HttpMethod.Post;
+		}
+		HttpRequestMessage request = new(HttpMethod.Put, url)
 		{
 			Content = JsonContent.Create(requestData, options: _options)
 		};
