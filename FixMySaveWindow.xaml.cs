@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
 using PhigrosLibraryCSharp;
-using PhigrosLibraryCSharp.Cloud.DataStructure.Raw;
+using PhigrosLibraryCSharp.Cloud.RawData;
 using System.Windows;
 using yt6983138.Common;
 

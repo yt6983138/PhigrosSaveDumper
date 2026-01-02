@@ -35,6 +35,7 @@
                 <TextBox x:Name="TokenTextBox" TextWrapping="Wrap" Text="Put token here..." FontSize="16" VerticalAlignment="Top"/>
                 <Button x:Name="TapTapLoginButton" Grid.Column="1" Content="Login through TapTap" HorizontalAlignment="Left" Margin="15,2,0,0" VerticalAlignment="Top" Click="LoginTapTap"/>
                 <Button x:Name="LockButton" Grid.Column="1" Content="Lock/Unlock token" HorizontalAlignment="Left" Margin="15,27,0,0" VerticalAlignment="Top" Click="LockOrUnlock"/>
+                <CheckBox x:Name="InternationalMode" Content="International mode" HorizontalAlignment="Left" Margin="0,28,0,0" VerticalAlignment="Top"/>
             </Grid>
             <GroupBox x:Name="OperationGroupBox" Header="Operations" Grid.Row="1" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
                 <Grid>

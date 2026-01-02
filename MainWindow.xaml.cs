@@ -1,7 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using PhigrosLibraryCSharp;
 using PhigrosLibraryCSharp.Cloud.Login;
-using PhigrosLibraryCSharp.Cloud.Login.DataStructure;
+using PhigrosLibraryCSharp.Cloud.RawData;
 using PhigrosLibraryCSharp.Extensions;
 using PhigrosLibraryCSharp.GameRecords;
 using System.Diagnostics;
@@ -129,7 +129,7 @@ public partial class MainWindow : Window
 		if (!await this.ExecuteHandled(async () =>
 		{
 			this.Logger.Log(LogLevel.Information, "Locking token...", MiscEventId, this);
-			Save helper = new(this.TokenTextBox.Text.Trim());
+			Save helper = new(this.TokenTextBox.Text.Trim(), this.InternationalMode.IsChecked.GetValueOrDefault());
 			_ = await helper.GetUserInfoAsync();
 			this.SaveHelper = helper;
 			this.TokenTextBox.IsEnabled = false;
@@ -273,7 +273,7 @@ public partial class MainWindow : Window
 	{
 		await this.ExecuteHandled(async () =>
 		{
-			PhigrosLibraryCSharp.Cloud.DataStructure.Raw.RawSaveContainer data = await this.SaveHelper!.GetRawSaveFromCloudAsync();
+			RawSaveContainer data = await this.SaveHelper!.GetRawSaveFromCloudAsync();
 			this.Logger.Log(LogLevel.Information, data.ToJson(), OperationEventId, this);
 		}, "Error while reading:");
 	}
