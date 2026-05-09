@@ -54,7 +54,6 @@
                     <Button x:Name="EmulateReadGameUserInfoButton" Grid.Column="1" Content="Emulate read game user info (needs debugger)" HorizontalAlignment="Left" Margin="10,60,0,0" VerticalAlignment="Top" Click="EmulateReadGameUserInfoButton_Click"/>
                     <Button x:Name="EmulateReadProgressButton" Grid.Column="1" Content="Emulate read progress (needs debugger)" HorizontalAlignment="Left" Margin="10,85,0,0" VerticalAlignment="Top" Click="EmulateReadProgressButton_Click"/>
                     <Button x:Name="EmulateReadSettingsButton" Grid.Column="1" Content="Emulate read settings (needs debugger)" HorizontalAlignment="Left" Margin="10,110,0,0" VerticalAlignment="Top" Click="EmulateReadSettingsButton_Click"/>
-                    <Button x:Name="EmulateGetRawInfoButton" Grid.Column="1" Content="Emulate read raw info" HorizontalAlignment="Left" Margin="10,145,0,0" VerticalAlignment="Top" Click="EmulateGetRawInfoButton_Click"/>
                     <Button x:Name="FixWizardButton" Content="Open fix wizard" HorizontalAlignment="Left" Margin="10,145,0,0" VerticalAlignment="Top" Click="FixWizardButton_Click"/>
                 </Grid>
 

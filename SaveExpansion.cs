@@ -1,16 +1,18 @@
-﻿using Newtonsoft.Json.Linq;
-using PhigrosLibraryCSharp;
+﻿using ICSharpCode.SharpZipLib.Zip;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+using PhigrosLibraryCSharp.CloudSave;
 using System.Globalization;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
 namespace PhigrosSaveDumper;
-public static class SaveUploader
+public static class SaveExpansion
 {
 	private record struct FileTokenMeta(string _checksum, string prefix, int size);
 	private record struct FileTokenInfo(
@@ -31,12 +33,9 @@ public static class SaveUploader
 
 	private static JsonSerializerOptions _options = new() { PropertyNamingPolicy = null };
 
-	[UnsafeAccessor(UnsafeAccessorKind.Method, Name = "get_Client")]
-	private static extern HttpClient GetHttpClient(Save save);
-
 	public static async Task<JObject> FetchRawSaveAsNode(Save save)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 		HttpResponseMessage response = await client.GetAsync(@"https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/classes/_GameSave");
 		string content = await response.Content.ReadAsStringAsync();
 		return JObject.Parse(content);
@@ -56,7 +55,7 @@ public static class SaveUploader
 
 	private static async Task<FileTokenInfo> CreateFileToken(byte[] packedSaveBuffer, string userObjectId, Save save)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 
 		var fileTokenRequest = new
 		{
@@ -84,7 +83,7 @@ public static class SaveUploader
 	}
 	private static async Task<CreateUploadResponse> CreateUpload(FileTokenInfo info, Save save)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 		HttpRequestMessage request = new(
 			HttpMethod.Post,
 			$"https://upload.qiniup.com/buckets/rAK3Ffdi/objects/{Convert.ToBase64String(Encoding.UTF8.GetBytes(info.key))}/uploads")
@@ -97,7 +96,7 @@ public static class SaveUploader
 	}
 	private static async Task<RequestUploadPart> UploadPart(int partNumber, byte[] packedSaveBuffer, FileTokenInfo info, CreateUploadResponse uploadCreation, Save save)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 		HttpRequestMessage request = new(
 			HttpMethod.Put,
 			$"https://upload.qiniup.com/buckets/rAK3Ffdi/objects/{Convert.ToBase64String(Encoding.UTF8.GetBytes(info.key))}/uploads/{uploadCreation.uploadId}/{partNumber}")
@@ -113,7 +112,7 @@ public static class SaveUploader
 	}
 	private static async Task CompleteUpload(FileTokenInfo info, CreateUploadResponse uploadCreation, Save save, params (int Index, RequestUploadPart Part)[] parts)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 		HttpRequestMessage request1 = new(HttpMethod.Post, $"https://upload.qiniup.com/buckets/rAK3Ffdi/objects/" +
 			$"{Convert.ToBase64String(Encoding.UTF8.GetBytes(info.key))}/uploads/{uploadCreation.uploadId}")
 		{
@@ -136,7 +135,7 @@ public static class SaveUploader
 	}
 	private static async Task UpdateSummary(FileTokenInfo info, byte[] packedSummaryData, string? oldSaveObjectId, string userObjectId, Save save)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 
 		var requestData = new
 		{
@@ -172,7 +171,7 @@ public static class SaveUploader
 			url += $"/{oldSaveObjectId}";
 			method = HttpMethod.Post;
 		}
-		HttpRequestMessage request = new(HttpMethod.Put, url)
+		HttpRequestMessage request = new(method, url)
 		{
 			Content = JsonContent.Create(requestData, options: _options)
 		};
@@ -181,8 +180,46 @@ public static class SaveUploader
 	}
 	public static async Task DeleteOld(string oldSaveGameFileObjectId, Save save)
 	{
-		HttpClient client = GetHttpClient(save);
+		HttpClient client = save.Client;
 		HttpResponseMessage response = await client.DeleteAsync($"https://rak3ffdi.cloud.tds1.tapapis.cn/1.1/files/{oldSaveGameFileObjectId}");
 		response.EnsureSuccessStatusCode();
+	}
+
+	internal static async Task UnpackRawZip(this Save helper, int saveIndex, DirectoryInfo target, ILogger logger)
+	{
+		byte[] rawZip = await helper.GetSaveZipAsync((await helper.GetSaveInfoFromCloudAsync()).GetParsedSaves()[saveIndex]);
+
+		const string EncryptedFolder = "Encrypted";
+		const string DecryptedFolder = "Decrypted";
+		if (!target.Exists)
+		{
+			target.Create();
+		}
+		DirectoryInfo encryptedDir = target.GetDirectories()
+			.FirstOrDefault(x => x.Name == EncryptedFolder) ?? target.CreateSubdirectory(EncryptedFolder);
+		DirectoryInfo decryptedDir = target.GetDirectories()
+			.FirstOrDefault(x => x.Name == DecryptedFolder) ?? target.CreateSubdirectory(DecryptedFolder);
+
+		logger.LogInformation("Writing raw zip, size: {size} KiB.", rawZip.Length / 1024f);
+		FileStream fileStream = File.Open(Path.Combine(encryptedDir.FullName, ".cloud.zip"), FileMode.Create, FileAccess.ReadWrite);
+		fileStream.Write(rawZip);
+		fileStream.Seek(0, SeekOrigin.Begin);
+		logger.LogInformation("Writing raw zip done.");
+		using ZipFile zipFile = new(fileStream);
+		foreach (ZipEntry recordFile in zipFile)
+		{
+			logger.LogInformation("Processing record '{recordName}'.", recordFile.Name);
+			byte[] decompressed = new byte[recordFile.Size];
+			zipFile.GetInputStream(recordFile).Read(decompressed, 0, decompressed.Length);
+			File.WriteAllBytes(Path.Combine(encryptedDir.FullName, recordFile.Name), decompressed);
+			logger.LogInformation("Wrote encrypted record '{recordName}'.", recordFile.Name);
+			decompressed = decompressed[1..]; // for some reason i need to trim the first byte
+
+			//byte[] decrypted = await this.Runtime!.InvokeAsync<byte[]>("AesDecrypt", decompressed, key, iv); 
+			byte[] decrypted = await helper.Decrypt(decompressed);
+			logger.LogInformation("Wrote decrypted record '{recordName}'.", recordFile.Name);
+			File.WriteAllBytes(Path.Combine(decryptedDir.FullName, recordFile.Name), decrypted);
+		}
+		logger.LogInformation("Wrote all record.");
 	}
 }

@@ -1,22 +1,26 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<LangVersion>preview</LangVersion>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.0" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="SharpZipLib" Version="1.4.2" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Extended.Wpf.Toolkit" Version="4.6.0" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="NLog.Extensions.Logging" Version="6.1.3" />
+		<PackageReference Include="SharpZipLib" Version="1.4.2" />
+		<PackageReference Include="PhigrosLibraryCSharp" Version="4.1.1" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\PhigrosLibraryCSharp\PhigrosLibraryCSharp\PhigrosLibraryCSharp.csproj" />
-    <ProjectReference Include="..\yt6983138\yt6983138.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+	  <None Update="nlog.config">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 
 </Project>

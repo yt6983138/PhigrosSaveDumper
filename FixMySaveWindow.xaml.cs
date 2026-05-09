@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.Logging;
 using Newtonsoft.Json.Linq;
-using PhigrosLibraryCSharp;
-using PhigrosLibraryCSharp.Cloud.RawData;
+using PhigrosLibraryCSharp.CloudSave;
+using PhigrosLibraryCSharp.CloudSave.HttpModels;
 using System.Windows;
-using yt6983138.Common;
 
 namespace PhigrosSaveDumper;
 /// <summary>
@@ -39,33 +38,33 @@ public partial class FixMySaveWindow : Window
 				return;
 			}
 
-			this._mainWindow.Logger.Log(LogLevel.Information, $"Fixing save at index {sourceIndex}...", MainWindow.OperationEventId, this);
+			this._mainWindow.Logger.LogInformation("Fixing save at index {index}...", sourceIndex);
 
-			Save save = this._mainWindow.SaveHelper!;
-			JObject rawSave = await SaveUploader.FetchRawSaveAsNode(save);
-			this._mainWindow.Logger.Log(LogLevel.Information, $"Raw save: {rawSave.ToJson()}", MainWindow.OperationEventId, this);
+			Save save = this._mainWindow.SaveOrThrow;
+			JObject rawSave = await SaveExpansion.FetchRawSaveAsNode(save);
+			this._mainWindow.Logger.LogInformation("Raw save: {save}", rawSave.ToJson());
 			JToken results = rawSave["results"]!;
 			JToken? toFixValue = this.TargetIndex.IsEnabled ? results[targetIndex]! : null;
 
 			JToken sourceValue = results[sourceIndex]!;
 
-			byte[] raw = await save.GetSaveRawZipAsync(new PhiCloudObj() { Url = (string)sourceValue["gameFile"]!["url"]! });
+			byte[] raw = await save.GetSaveZipAsync(new PhiCloudObj() { Url = (string)sourceValue["gameFile"]!["url"]! });
 
-			this._mainWindow.Logger.Log(LogLevel.Information, $"Uploading...", MainWindow.OperationEventId, this);
-			await SaveUploader.UploadSave(
+			this._mainWindow.Logger.LogInformation("Uploading...");
+			await SaveExpansion.UploadSave(
 				save,
 				(string)sourceValue["user"]!["objectId"]!,
 				null,
 				(string?)toFixValue?["objectId"],
 				raw,
 				Convert.FromBase64String((string)sourceValue["summary"]!));
-			this._mainWindow.Logger.Log(LogLevel.Information, $"Upload complete.", MainWindow.OperationEventId, this);
+			this._mainWindow.Logger.LogInformation("Uploading complete");
 			MessageBox.Show("Fixed successfully.", "Fix Wizard Result", MessageBoxButton.OK);
 			this.Close();
 		}
 		catch (Exception ex)
 		{
-			this._mainWindow.Logger.Log(LogLevel.Error, $"Error while fixing save: {ex.Message}", MainWindow.OperationEventId, this, ex);
+			this._mainWindow.Logger.LogError(ex, "Error while fixing save:");
 			MessageBox.Show($"An error occurred while fixing the save: {ex.Message}", "Fix Wizard Error", MessageBoxButton.OK, MessageBoxImage.Error);
 		}
 	}
@@ -73,9 +72,9 @@ public partial class FixMySaveWindow : Window
 	{
 		try
 		{
-			Save save = this._mainWindow.SaveHelper!;
-			JObject rawSave = await SaveUploader.FetchRawSaveAsNode(save);
-			this._mainWindow.Logger.Log(LogLevel.Information, $"Raw save: {rawSave.ToJson()}", MainWindow.OperationEventId, this);
+			Save save = this._mainWindow.SaveOrThrow;
+			JObject rawSave = await SaveExpansion.FetchRawSaveAsNode(save);
+			this._mainWindow.Logger.LogInformation("Raw save: {save}", rawSave.ToJson());
 			JToken results = rawSave["results"]!;
 
 			string message = string.Join("\n",
@@ -84,7 +83,7 @@ public partial class FixMySaveWindow : Window
 		}
 		catch (Exception ex)
 		{
-			this._mainWindow.Logger.Log(LogLevel.Error, $"Error while fixing save: {ex.Message}", MainWindow.OperationEventId, this, ex);
+			this._mainWindow.Logger.LogError(ex, "Error while fixing save:");
 			MessageBox.Show($"An error occurred while fixing the save: {ex.Message}", "Fix Wizard Error", MessageBoxButton.OK, MessageBoxImage.Error);
 		}
 	}

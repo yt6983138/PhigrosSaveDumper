@@ -1,15 +1,16 @@
 ﻿using Microsoft.Extensions.Logging;
-using PhigrosLibraryCSharp;
-using PhigrosLibraryCSharp.Cloud.Login;
-using PhigrosLibraryCSharp.Cloud.RawData;
-using PhigrosLibraryCSharp.Extensions;
-using PhigrosLibraryCSharp.GameRecords;
+using NLog;
+using NLog.Extensions.Logging;
+using PhigrosLibraryCSharp.CloudSave;
+using PhigrosLibraryCSharp.CloudSave.Login;
+using PhigrosLibraryCSharp.Serialization;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
+using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using System.Windows;
-using yt6983138.Common;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace PhigrosSaveDumper;
 /// <summary>
@@ -17,38 +18,78 @@ namespace PhigrosSaveDumper;
 /// </summary>
 public partial class MainWindow : Window
 {
-	private Save? _saveHelper;
+	internal ILogger Logger { get; set; }
 
-	internal static readonly EventId TapTapEventId = new(0, "TapTap");
-	internal static readonly EventId MiscEventId = new(0, "Misc");
-	internal static readonly EventId OperationEventId = new(0, "Operations");
-
-	internal Logger Logger { get; set; } = new("./latest.log");
 	public Save? SaveHelper
 	{
-		get => this._saveHelper;
+		get;
 		set
 		{
-			this._saveHelper = value;
+			field = value;
+			field?.RequestHandler = (save, request) => this.CommonRequestHandler(save.Client, request);
+
 			OnLockOrUnlock?.Invoke(this, value);
 		}
 	}
 	internal event EventHandler<Save?>? OnLockOrUnlock;
 
+	public Save SaveOrThrow => this.SaveHelper
+		?? throw new InvalidOperationException("Save is not locked yet.");
+
 	public MainWindow()
 	{
 		this.InitializeComponent();
-		this.Logger.OnAfterLog += (_, _2) =>
-		{
-			this.LogOutput.Text = string.Join("", Logger.AllLogs);
-			this.LogOutput.ScrollToEnd();
-		};
 		OnLockOrUnlock += (_, obj) => this.OperationGroupBox.IsEnabled = obj is not null;
 		OnLockOrUnlock += (_, obj) => this.SettingsGroupBox.IsEnabled = obj is not null;
 		this.SaveHelper = null;
 
+		LogManager.Setup().SetupExtensions(ext =>
+		{
+			ext.RegisterTarget<EventLogTarget>();
+		}).LoadConfigurationFromFile();
+
+		EventLogTarget target = LogManager.Configuration?.FindTargetByName<EventLogTarget>("eventLog")
+			?? throw new InvalidOperationException("Cannot find event log target");
+
+		this.Logger = new NLogLoggerProvider().CreateLogger(nameof(MainWindow));
+
+		target.LogEmitted += (sender, logEvent) =>
+		{
+			if (sender.AllLogs.Count == 1)
+				this.LogOutput.Text = "";
+
+			this.LogOutput.Text += $"{logEvent.Rendered}\n";
+			this.LogOutput.ScrollToEnd();
+		};
+
+		TapTapHelper.Proxy = this.CommonRequestHandler;
+
 		if (!Directory.Exists("./Saves/"))
 			Directory.CreateDirectory("./Saves/");
+	}
+
+	private async Task<HttpResponseMessage> CommonRequestHandler(HttpClient client, HttpRequestMessage request)
+	{
+		int hash = request.GetHashCode();
+		this.Logger.LogDebug("Requesting: ({hash}) {request}", hash, request);
+		HttpResponseMessage response = await client.SendAsync(request);
+		await response.Content.LoadIntoBufferAsync();
+		Stream stream = await response.Content.ReadAsStreamAsync();
+
+		string? mediaType = response.Content.Headers.ContentType?.MediaType;
+
+		if ((mediaType?.Contains("application/json", StringComparison.OrdinalIgnoreCase)).GetValueOrDefault())
+		{
+			string content = await response.Content.ReadAsStringAsync();
+			this.Logger.LogDebug("Response: ({hash}) {stat}: {message}", hash, response.StatusCode, content);
+		}
+		else
+		{
+			this.Logger.LogDebug("Response: ({hash}) {stat}: <not json: {type}>", hash, response.StatusCode, mediaType);
+		}
+
+		stream.Seek(0, SeekOrigin.Begin);
+		return response;
 	}
 
 	private async Task<bool> ExecuteHandled(Func<Task> action, string errorMessage)
@@ -60,7 +101,7 @@ public partial class MainWindow : Window
 		}
 		catch (Exception ex)
 		{
-			this.Logger.Log(LogLevel.Information, errorMessage, OperationEventId, this, ex);
+			this.Logger.LogError(ex, errorMessage);
 			return false;
 		}
 	}
@@ -73,21 +114,20 @@ public partial class MainWindow : Window
 		}
 		catch (Exception ex)
 		{
-			this.Logger.Log(LogLevel.Information, errorMessage, OperationEventId, this, ex);
+			this.Logger.LogError(ex, errorMessage);
 			return false;
 		}
 	}
 
 	private async void LoginTapTap(object _, RoutedEventArgs _2)
 	{
-		this.Logger.Log(LogLevel.Information, "TapTap login started...", TapTapEventId, this);
+		this.Logger.LogInformation("TapTap login started...");
 		await this.ExecuteHandled(async () =>
 		{
-			this.Logger.Log(LogLevel.Information, "Requesting login link...", TapTapEventId, this);
+			this.Logger.LogInformation("Requesting login link...");
 			CompleteQRCodeData qrCode = await TapTapHelper.RequestLoginQrCode();
 			Process.Start(new ProcessStartInfo(qrCode.Url) { UseShellExecute = true });
-			this.Logger.Log(LogLevel.Information, $"QRCode url generated: {qrCode.Url}, " +
-				$"expires in {qrCode.ExpiresInSeconds} seconds.", TapTapEventId, this);
+			this.Logger.LogInformation("QRCode url generated: {url}, expires in {sec} seconds.", qrCode.Url, qrCode.ExpiresInSeconds);
 			this.ListenLogin(qrCode);
 		}, "Error generating qrcode:");
 	}
@@ -104,17 +144,17 @@ public partial class MainWindow : Window
 				{
 					TapTapProfileData profile = await TapTapHelper.GetProfile(result.Data);
 
-					this.Logger.Log(LogLevel.Information, $"Login result: {System.Text.Json.JsonSerializer.Serialize(result)}", TapTapEventId, this);
-					this.Logger.Log(LogLevel.Information, $"Profile result: {System.Text.Json.JsonSerializer.Serialize(profile)}", TapTapEventId, this);
+					this.Logger.LogInformation("Login result: {result}", result.ToJson());
+					this.Logger.LogInformation("Profile result: {profile}", profile.ToJson());
 
 					LCCombinedAuthData completed = new(profile.Data, result.Data);
 					JsonNode invoked = await LCHelper.LoginWithAuthData(completed);
 
-					this.Logger.Log(LogLevel.Information, $"Final result: {invoked.ToJsonString()}", TapTapEventId, this);
+					this.Logger.LogInformation("Final result: {result}", invoked.ToJsonString());
 
 					string token = ((string?)invoked["sessionToken"]).EnsureNotNull();
 					this.TokenTextBox.Text = token;
-					this.Logger.Log(LogLevel.Information, $"Got token: {token}", TapTapEventId, this);
+					this.Logger.LogInformation("Got token: {token}", token);
 					return;
 				}
 			}, "Error processing login:");
@@ -128,12 +168,12 @@ public partial class MainWindow : Window
 		}
 		if (!await this.ExecuteHandled(async () =>
 		{
-			this.Logger.Log(LogLevel.Information, "Locking token...", MiscEventId, this);
+			this.Logger.LogInformation("Locking token...");
 			Save helper = new(this.TokenTextBox.Text.Trim(), this.InternationalMode.IsChecked.GetValueOrDefault());
-			_ = await helper.GetUserInfoAsync();
+			_ = await helper.GetPlayerInfoAsync();
 			this.SaveHelper = helper;
 			this.TokenTextBox.IsEnabled = false;
-			this.Logger.Log(LogLevel.Information, "Token locked.", MiscEventId, this);
+			this.Logger.LogInformation("Token locked.");
 		}, $"Error while locking:"))
 		{
 			goto Final;
@@ -143,7 +183,7 @@ public partial class MainWindow : Window
 	Final:
 		this.SaveHelper = null;
 		this.TokenTextBox.IsEnabled = true;
-		this.Logger.Log(LogLevel.Information, "Token unlocked.", MiscEventId, this);
+		this.Logger.LogInformation("Token unlocked.");
 		return;
 	}
 
@@ -160,7 +200,7 @@ public partial class MainWindow : Window
 				nativeDir.MoveTo($"./Saves/{dateTimeString}");
 				nativeDir = new("./Saves/Native");
 				nativeDir.Create();
-				this.Logger.Log(LogLevel.Information, $"Renamed folder from 'Native' to '{dateTimeString}'.", MiscEventId, this);
+				this.Logger.LogInformation("Renamed folder from 'Native' to '{date}'.", dateTimeString);
 			}, "Error while moving folder:"))
 			{
 				return;
@@ -168,7 +208,7 @@ public partial class MainWindow : Window
 		}
 		await this.ExecuteHandled(async () =>
 		{
-			await this.SaveHelper!.UnpackRawZip(this.TimeIndexSelector.Value ?? 0, nativeDir, this.Logger, OperationEventId);
+			await this.SaveOrThrow.UnpackRawZip(this.TimeIndexSelector.Value ?? 0, nativeDir, this.Logger);
 		}, "Error while unpacking:");
 	}
 
@@ -178,12 +218,12 @@ public partial class MainWindow : Window
 		{
 			int i = 0;
 			string message = string.Join("\n",
-					(await this.SaveHelper!.GetRawSaveFromCloudAsync())
+					(await this.SaveOrThrow.GetSaveInfoFromCloudAsync())
 					.GetParsedSaves()
 					.Select(x => $"{i++}: {x.ModificationTime}")
 				);
 			MessageBox.Show(message);
-			this.Logger.Log(LogLevel.Information, $"Listing indexes...\n{message}", OperationEventId, this);
+			this.Logger.LogInformation("Listing indexes...\n{message}", message);
 		}, "Error while listing index:");
 	}
 
@@ -191,31 +231,15 @@ public partial class MainWindow : Window
 	{
 		await this.ExecuteHandled(async () =>
 		{
-			ByteReader byteReader = new(File.ReadAllBytes("./Saves/Native/Decrypted/gameRecord"));
-			if (!File.Exists("difficulty.tsv"))
-			{
-				using HttpClient client = new();
-				byte[] data = await client.GetByteArrayAsync(@"https://raw.githubusercontent.com/7aGiven/Phigros_Resource/refs/heads/info/difficulty.tsv");
-				File.WriteAllBytes("difficulty.tsv", data);
-			}
-			string[] lines = File.ReadAllLines("difficulty.tsv");
-			Dictionary<string, float[]> difficulties = [];
-			foreach (string line in lines)
-			{
-				string[] splitted = line.Replace("\n", "").Replace("\r", "").Split('\t');
-				if (splitted.Length < 2) continue;
-				string name = splitted[0];
-				float[] diffs = splitted[1..]
-					.Select(float.Parse)
-					.ToArray();
-				difficulties.Add(name, diffs);
-			}
-			List<CompleteScore> scores = byteReader.ReadAllGameRecord(difficulties, null);
-			this.Logger.Log(LogLevel.Information, OperationEventId, "Got save! printing first 10...");
+			ByteReader byteReader = new(await File.ReadAllBytesAsync("./Saves/Native/Decrypted/gameRecord"));
+
+			GameRecord record = GameRecord.FromReader(byteReader);
+			Random.Shared.Shuffle(CollectionsMarshal.AsSpan(record.Records));
+			this.Logger.LogInformation("Printing random 10...");
 			for (int i = 0; i < 10; i++)
 			{
-				CompleteScore score = scores[i];
-				this.Logger.Log(LogLevel.Information, OperationEventId, "{0}: {1}/{2}/{3}", i, score.Id, score.Score, score.Accuracy);
+				SongScore score = record.Records[i];
+				this.Logger.LogInformation("{index}: {id}/{score}/{acc}", i, score.Id, score.Score, score.Accuracy);
 			}
 		}, "Error while reading:");
 	}
@@ -224,10 +248,9 @@ public partial class MainWindow : Window
 	{
 		await this.ExecuteHandled(async () =>
 		{
-			this.Logger.Log(LogLevel.Information, "Loading user info", OperationEventId, this);
-			Save saveHelper = this.SaveHelper!;
+			this.Logger.LogInformation("Loading user info...");
 
-			this.Logger.Log(LogLevel.Information, (await saveHelper.GetUserInfoAsync()).ToJson(), OperationEventId, this);
+			await this.SaveOrThrow.GetPlayerInfoAsync(); // logged from interceptor
 		}, "Error while reading:");
 	}
 
@@ -235,12 +258,10 @@ public partial class MainWindow : Window
 	{
 		this.ExecuteHandled(() =>
 		{
-			this.Logger.Log(LogLevel.Information, "Loading game user info", OperationEventId, this);
-			Save saveHelper = this.SaveHelper!;
+			this.Logger.LogInformation("Loading game user info...");
+			ByteReader reader = new(File.ReadAllBytes("./Saves/Native/Decrypted/user"));
 
-			byte[] rawData = File.ReadAllBytes("./Saves/Native/Decrypted/user"); // note raw data is zip
-			ByteReader reader = new(rawData);
-			this.Logger.Log(LogLevel.Information, reader.ReadGameUserInfo().ToJson(), OperationEventId, this);
+			this.Logger.LogInformation("{message}", GameUserInfo.FromReader(reader).ToJson());
 		}, "Error while reading:");
 	}
 
@@ -248,12 +269,10 @@ public partial class MainWindow : Window
 	{
 		this.ExecuteHandled(() =>
 		{
-			this.Logger.Log(LogLevel.Information, "Loading game progress", OperationEventId, this);
-			Save saveHelper = this.SaveHelper!;
+			this.Logger.LogInformation("Loading game progress...");
+			ByteReader reader = new(File.ReadAllBytes("./Saves/Native/Decrypted/gameProgress"));
 
-			byte[] rawData = File.ReadAllBytes("./Saves/Native/Decrypted/gameProgress"); // note raw data is zip
-			ByteReader reader = new(rawData);
-			this.Logger.Log(LogLevel.Information, reader.ReadGameProgress().ToJson(), OperationEventId, this);
+			this.Logger.LogInformation("{message}", GameProgress.FromReader(reader).ToJson());
 		}, "Error while reading:");
 	}
 
@@ -261,20 +280,10 @@ public partial class MainWindow : Window
 	{
 		this.ExecuteHandled(() =>
 		{
-			this.Logger.Log(LogLevel.Information, "Loading game settings", OperationEventId, this);
-			Save saveHelper = this.SaveHelper!;
+			this.Logger.LogInformation("Loading game settings...");
+			ByteReader reader = new(File.ReadAllBytes("./Saves/Native/Decrypted/settings"));
 
-			byte[] rawData = File.ReadAllBytes("./Saves/Native/Decrypted/settings"); // note raw data is zip
-			ByteReader reader = new(rawData);
-			this.Logger.Log(LogLevel.Information, reader.ReadGameSettings().ToJson(), OperationEventId, this);
-		}, "Error while reading:");
-	}
-	private async void EmulateGetRawInfoButton_Click(object sender, RoutedEventArgs e)
-	{
-		await this.ExecuteHandled(async () =>
-		{
-			RawSaveContainer data = await this.SaveHelper!.GetRawSaveFromCloudAsync();
-			this.Logger.Log(LogLevel.Information, data.ToJson(), OperationEventId, this);
+			this.Logger.LogInformation("{message}", GameSettings.FromReader(reader).ToJson());
 		}, "Error while reading:");
 	}
 	private void DoSomethingButton_Click(object sender, RoutedEventArgs e)
