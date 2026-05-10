@@ -4,14 +4,14 @@ using System.Text.Json;
 namespace PhigrosSaveDumper;
 internal static class Extension
 {
-	private static readonly JsonSerializerOptions _options = new()
+	internal static readonly JsonSerializerOptions _jsonOptions = new()
 	{
 		WriteIndented = true
 	};
 
 	internal static string ToJson<T>(this T obj)
 	{
-		return JsonSerializer.Serialize(obj, _options);
+		return JsonSerializer.Serialize(obj, _jsonOptions);
 	}
 
 	[return: NotNull]

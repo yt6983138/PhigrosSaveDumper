@@ -81,6 +81,12 @@ public partial class MainWindow : Window
 		if ((mediaType?.Contains("application/json", StringComparison.OrdinalIgnoreCase)).GetValueOrDefault())
 		{
 			string content = await response.Content.ReadAsStringAsync();
+			try
+			{
+				content = JsonNode.Parse(content)?.ToJsonString(Extension._jsonOptions) ?? content;
+			}
+			catch { }
+
 			this.Logger.LogDebug("Response: ({hash}) {stat}: {message}", hash, response.StatusCode, content);
 		}
 		else
